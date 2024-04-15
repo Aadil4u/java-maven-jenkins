@@ -1,11 +1,12 @@
-#!/usr/bin/env groovy
-
 def gv
 
 pipeline {
     agent any
     tools {
         maven 'Maven'
+    }
+    environment {
+        IMAGE_NAME = 'aadilpatni4u/java-app:6.0'
     }
     stages {
         stage("init") {
@@ -15,6 +16,7 @@ pipeline {
                 }
             }
         }
+        
         stage("build jar") {
             steps {
                 script {
@@ -22,19 +24,33 @@ pipeline {
                 }
             }
         }
-        stage("build image") {
+        
+        stage("build and push image") {
             steps {
                 script {
-                    gv.buildImage()
+                    gv.buildDockerImage(env.IMAGE_NAME)
+                    gv.dockerLogin()
+                    gv.dockerPush(env.IMAGE_NAME)
                 }
             }
         }
-        stage("deploy") {
+        
+       stage('deploy') {
             steps {
                 script {
-                    gv.deployApp()
+                   echo 'deploying docker image to EC2...'
+
+                   def shellCmd = "bash ./server-cmds.sh ${IMAGE_NAME}"
+                   def ec2Instance = "ec2-user@65.0.18.18"
+
+                   sshagent(['ec2-server-key']) {
+                       sh "scp -o StrictHostKeyChecking=no server-cmds.sh ${ec2Instance}:/home/ec2-user"
+                       sh "scp -o StrictHostKeyChecking=no docker-compose.yaml ${ec2Instance}:/home/ec2-user"
+                       sh "ssh -o StrictHostKeyChecking=no ${ec2Instance} ${shellCmd}"
+                   }
                 }
             }
         }
+
     }
 }
