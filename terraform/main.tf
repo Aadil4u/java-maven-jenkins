@@ -1,3 +1,11 @@
+terraform {
+  backend "s3" {
+    bucket = "terrraform-configs"
+    key    = "myapp/state.tfstate"
+    region = "ap-south-1"
+  }
+}
+
 provider "aws" {
   region = "ap-south-1"
 }
